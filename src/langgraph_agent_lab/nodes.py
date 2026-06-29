@@ -115,18 +115,21 @@ def evaluate_node(state: AgentState) -> dict:
         evaluation_result = "needs_retry"
     else:
         latest_result = tool_results[-1]
-        try:
-            llm = get_llm()
-            structured_llm = llm.with_structured_output(EvaluationJudge)
-            prompt = f"""You are a quality control agent evaluating tool execution results.
+        if "ERROR" in latest_result or "timeout" in latest_result.lower():
+            evaluation_result = "needs_retry"
+        else:
+            try:
+                llm = get_llm()
+                structured_llm = llm.with_structured_output(EvaluationJudge)
+                prompt = f"""You are a quality control agent evaluating tool execution results.
 Determine if the following tool result represents a successful execution or if it indicates an error, timeout, or failure.
 
 Tool Result: "{latest_result}"
 """
-            judge = structured_llm.invoke(prompt)
-            evaluation_result = "success" if judge.is_satisfactory else "needs_retry"
-        except Exception:
-            evaluation_result = "needs_retry" if "ERROR" in latest_result else "success"
+                judge = structured_llm.invoke(prompt)
+                evaluation_result = "success" if judge.is_satisfactory else "needs_retry"
+            except Exception:
+                evaluation_result = "needs_retry" if "ERROR" in latest_result else "success"
             
     return {
         "evaluation_result": evaluation_result,
