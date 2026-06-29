@@ -1,3 +1,4 @@
+# ruff: noqa: I001
 """State schema for the Day 08 LangGraph lab.
 
 Students should extend the schema only when needed. Keep state lean and serializable.
@@ -56,6 +57,10 @@ class AgentState(TypedDict, total=False):
     # TODO(student): you will need additional fields for clarification, risky actions,
     # approval decisions, and retry-loop gating. Add them as you implement nodes.
     # Hint: check what your nodes return and what your routing functions read.
+    evaluation_result: str
+    pending_question: str | None
+    proposed_action: str | None
+    approval: ApprovalDecision | None
     messages: Annotated[list[str], add]
     tool_results: Annotated[list[str], add]
     errors: Annotated[list[str], add]
@@ -90,6 +95,10 @@ def initial_state(scenario: Scenario) -> AgentState:
         "attempt": 0,
         "max_attempts": scenario.max_attempts,
         "final_answer": None,
+        "evaluation_result": "",
+        "pending_question": None,
+        "proposed_action": None,
+        "approval": None,
         "messages": [],
         "tool_results": [],
         "errors": [],
@@ -97,6 +106,8 @@ def initial_state(scenario: Scenario) -> AgentState:
     }
 
 
-def make_event(node: str, event_type: str, message: str, **metadata: Any) -> dict[str, Any]:
+def make_event(node: str, event_type: str, message: str, **metadata: Any) -> dict[str, Any]:  # noqa: ANN401
     """Create a normalized event payload."""
-    return LabEvent(node=node, event_type=event_type, message=message, metadata=metadata).model_dump()
+    return LabEvent(
+        node=node, event_type=event_type, message=message, metadata=metadata
+    ).model_dump()

@@ -1,3 +1,4 @@
+# ruff: noqa: I001
 """Checkpointer adapter."""
 
 from __future__ import annotations
@@ -5,16 +6,8 @@ from __future__ import annotations
 from typing import Any
 
 
-def build_checkpointer(kind: str = "memory", database_url: str | None = None) -> Any | None:
+def build_checkpointer(kind: str = "memory", database_url: str | None = None) -> Any | None:  # noqa: ANN401
     """Return a LangGraph checkpointer.
-
-    TODO(student): implement SQLite support for the persistence extension track.
-    The starter provides MemorySaver only — SQLite/Postgres are extension tasks.
-
-    For SQLite:
-    - pip install langgraph-checkpoint-sqlite
-    - Use SqliteSaver with sqlite3.connect() and WAL mode
-    - See: https://langchain-ai.github.io/langgraph/how-tos/persistence/
     """
     if kind == "none":
         return None
@@ -23,12 +16,22 @@ def build_checkpointer(kind: str = "memory", database_url: str | None = None) ->
 
         return MemorySaver()
     if kind == "sqlite":
-        raise NotImplementedError(
-            "TODO(student): implement SQLite checkpointer. "
-            "Hint: pip install langgraph-checkpoint-sqlite, then use SqliteSaver"
-        )
+        import sqlite3
+        from langgraph.checkpoint.sqlite import SqliteSaver
+
+        db_path = database_url or "checkpoints.sqlite"
+        conn = sqlite3.connect(db_path, check_same_thread=False)
+        # Enable WAL mode for high concurrency
+        conn.execute("PRAGMA journal_mode=WAL;")
+        return SqliteSaver(conn)
     if kind == "postgres":
-        raise NotImplementedError(
-            "TODO(student): implement Postgres checkpointer (optional extension)"
-        )
+        from langgraph.checkpoint.postgres import PostgresSaver  # type: ignore
+        # PostgresSaver requires connection pooling (e.g. psycopg Pool)
+        # It's an optional extension, let's support it if pool is passed as database_url
+        if database_url:
+            import psycopg  # type: ignore
+            connection_string = database_url
+            conn = psycopg.connect(connection_string)
+            return PostgresSaver(conn)
+        raise ValueError("PostgresSaver requires database_url configuration")
     raise ValueError(f"Unknown checkpointer kind: {kind}")
